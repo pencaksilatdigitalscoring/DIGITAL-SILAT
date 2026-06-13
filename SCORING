@@ -1,0 +1,841 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>DISCO 02.0 - Pencak Silat Digital Scoring</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"></script>
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&display=swap');
+        body { font-family: 'Montserrat', sans-serif; background-color: #f8fafc; color: #1e293b; margin: 0; height: 100vh; width: 100vw; overflow: hidden; }
+        
+        .screen { display: none; height: 100vh; width: 100vw; flex-direction: column; position: absolute; top: 0; left: 0; background: #f8fafc; }
+        .screen.active { display: flex; }
+
+        .btn-raise { transition: all 0.1s; border-bottom-width: 4px !important; position: relative; top: 0; }
+        .btn-raise:active { top: 2px !important; border-bottom-width: 1px !important; transform: scale(0.98); }
+        
+        .btn-pressed { top: 3px !important; border-bottom-width: 0px !important; background-color: #fbbf24 !important; color: #000 !important; box-shadow: inset 0 2px 4px rgba(0,0,0,0.2) !important; border-color: #d97706 !important; }
+
+        .btn-compact { padding: 5px 2px; font-size: 7px; font-weight: 800; border-radius: 8px; border: 1px solid #e2e8f0; background: white; display: flex; flex-direction: column; align-items: center; justify-content: center; text-transform: uppercase; line-height: 1.2; }
+        
+        .active-babak { background-color: #10b981 !important; color: white !important; border-color: #059669 !important; box-shadow: 0 0 15px rgba(16, 185, 129, 0.6); }
+        
+        .sudut-merah-bg { background-color: #ef4444; color: white; }
+        .sudut-biru-bg { background-color: #3b82f6; color: white; }
+        
+        .leader-glow { box-shadow: 0 0 30px rgba(251, 191, 36, 0.9) !important; border: 4px solid #fbbf24 !important; z-index: 10; transform: scale(1.02); }
+
+        .table-scoring { width: 100%; font-size: 8px; border-collapse: collapse; }
+        .table-scoring th, .table-scoring td { border: 1px solid #e2e8f0; padding: 3px; text-align: center; transition: background 0.3s; }
+        .cell-active { background-color: #fef08a !important; color: #000 !important; font-weight: 900; }
+
+        .custom-scroll { overflow-y: auto; }
+        .custom-scroll::-webkit-scrollbar { width: 3px; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        
+        .save-notif { position: fixed; top: 20px; right: 20px; background: #10b981; color: white; padding: 15px 25px; border-radius: 15px; font-weight: bold; transform: translateX(200%); transition: 0.5s; z-index: 60000; }
+        .save-notif.show { transform: translateX(0); }
+
+        .modal-overlay { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.9); z-index: 10000; display: none; align-items: center; justify-content: center; padding: 20px; backdrop-filter: blur(4px); }
+        .modal-overlay.active { display: flex; }
+        
+        .circle-vote { width: 60px; height: 60px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 900; color: white; border: 4px solid rgba(255,255,255,0.3); border-bottom-width: 6px; position: relative; top: 0; transition: all 0.2s; }
+        .circle-blue { background-color: #3b82f6; border-color: #2563eb; }
+        .circle-red { background-color: #ef4444; border-color: #dc2626; }
+        .circle-yellow { background-color: #fbbf24; border-color: #d97706; }
+        .circle-none { background-color: #334155; }
+        
+        .circle-active { border: 5px solid white !important; box-shadow: 0 0 20px rgba(255,255,255,0.6); transform: scale(1.1); }
+
+        .penalty-summary { font-size: 7px; font-weight: 800; background: rgba(0,0,0,0.1); padding: 2px 6px; border-radius: 4px; display: inline-block; margin-top: 4px; }
+        .penalty-full { font-size: 8px; font-weight: 700; color: #fff; background: rgba(0,0,0,0.3); padding: 4px 8px; border-radius: 6px; margin-top: 5px; text-transform: uppercase; }
+        
+        .status-header { font-size: 8px; font-weight: 800; text-transform: uppercase; padding: 6px; border-radius: 8px; text-align: left; margin-bottom: 2px; line-height: 1.3; border: 1px solid #e2e8f0; transition: all 0.3s; }
+        .status-header-active-tanding { background-color: #10b981 !important; color: white !important; border-color: #059669 !important; box-shadow: 0 0 15px rgba(16, 185, 129, 0.5); }
+        .status-header-active-persiapan { background-color: #f59e0b !important; color: white !important; border-color: #d97706 !important; box-shadow: 0 0 15px rgba(245, 158, 11, 0.5); }
+
+        .input-sekre { font-size: 7.5px; font-weight: 700; border-radius: 4px; padding: 4px; outline: none; text-transform: uppercase; width: 100%; border: 1px solid rgba(0,0,0,0.1); }
+
+        .jr-hit-btn { transition: all 0.05s; }
+        .jr-hit-btn:active { background-color: #fbbf24 !important; color: #000 !important; box-shadow: 0 0 30px #fbbf24 !important; transform: scale(0.95); }
+
+        .op-btn { font-size: 7px; padding: 6px 8px; border-radius: 6px; font-weight: 900; text-transform: uppercase; transition: all 0.2s; border: 1px solid transparent; cursor: pointer; }
+        .op-btn:active { transform: scale(0.9); }
+        .btn-inactive { background: #f1f5f9; color: #94a3b8; border-color: #e2e8f0; }
+        .btn-bertanding { background: #10b981 !important; color: white !important; border-color: #059669; box-shadow: 0 0 20px #10b981; animation: pulse-green 2s infinite; }
+        .btn-persiapan { background: #f59e0b !important; color: white !important; border-color: #d97706; box-shadow: 0 0 20px #f59e0b; animation: pulse-orange 2s infinite; }
+        .btn-selesai { background: #6366f1 !important; color: white !important; border-color: #4f46e5; box-shadow: 0 0 20px #6366f1; }
+
+        @keyframes pulse-green { 0% { box-shadow: 0 0 5px #10b981; } 50% { box-shadow: 0 0 20px #10b981; } 100% { box-shadow: 0 0 5px #10b981; } }
+        @keyframes pulse-orange { 0% { box-shadow: 0 0 5px #f59e0b; } 50% { box-shadow: 0 0 20px #f59e0b; } 100% { box-shadow: 0 0 5px #f59e0b; } }
+    </style>
+</head>
+<body>
+
+    <div id="save-ani" class="save-notif shadow-xl"><i class="fas fa-check-circle mr-2"></i> Data Tersimpan!</div>
+
+    <!-- MODAL DISKUALIFIKASI -->
+    <div id="modal-diskualifikasi" class="modal-overlay">
+        <div class="bg-white rounded-[2.5rem] p-8 w-full max-w-sm text-center shadow-2xl">
+            <p class="font-black text-sm uppercase mb-8">Peserta yang didiskualifikasi adalah:</p>
+            <div class="grid grid-cols-2 gap-4">
+                <button onclick="executeDis('biru')" class="sudut-biru-bg py-8 rounded-3xl font-black uppercase text-xs">SUDUT BIRU</button>
+                <button onclick="executeDis('merah')" class="sudut-merah-bg py-8 rounded-3xl font-black uppercase text-xs">SUDUT MERAH</button>
+            </div>
+            <button onclick="closeModal('modal-diskualifikasi')" class="mt-8 text-[10px] font-black text-slate-400">Batal</button>
+        </div>
+    </div>
+
+    <!-- MODAL VAR RESULT (DEWAN) -->
+    <div id="modal-dw-var-result" class="modal-overlay">
+        <div class="bg-slate-900 rounded-[3rem] p-10 w-full max-w-md text-center shadow-2xl">
+            <h2 class="text-white font-black text-2xl uppercase italic mb-10">Keputusan Juri</h2>
+            <div class="flex justify-around items-center mb-12">
+                <div class="flex flex-col items-center gap-3"><div id="dw-vote-1" class="circle-vote circle-none text-xl">1</div><span class="text-white/40 font-bold text-[9px]">JURI 1</span></div>
+                <div class="flex flex-col items-center gap-3"><div id="dw-vote-2" class="circle-vote circle-none text-xl">2</div><span class="text-white/40 font-bold text-[9px]">JURI 2</span></div>
+                <div class="flex flex-col items-center gap-3"><div id="dw-vote-3" class="circle-vote circle-none text-xl">3</div><span class="text-white/40 font-bold text-[9px]">JURI 3</span></div>
+            </div>
+            <button onclick="closeVAR()" class="w-full bg-emerald-500 text-white py-6 rounded-3xl font-black uppercase text-sm">A C C E P T</button>
+        </div>
+    </div>
+
+    <!-- MODAL VAR TYPE SELECTION (DEWAN) -->
+    <div id="modal-var-type" class="modal-overlay">
+        <div class="bg-white rounded-[2.5rem] p-8 w-full max-w-sm text-center shadow-2xl">
+            <h3 class="font-black text-blue-600 italic text-xl mb-2">V A R</h3>
+            <p class="font-bold text-slate-400 text-[10px] mb-8">VERIFIKASI YANG DIBUTUHKAN?</p>
+            <div class="grid grid-cols-1 gap-4">
+                <button onclick="startVAR('JATUHAN')" class="bg-slate-800 text-white py-6 rounded-2xl font-black uppercase text-xs">JATUHAN</button>
+                <button onclick="startVAR('PELANGGARAN')" class="bg-slate-800 text-white py-6 rounded-2xl font-black uppercase text-xs">PELANGGARAN</button>
+            </div>
+            <button onclick="closeModal('modal-var-type')" class="mt-6 text-[10px] font-black text-slate-400">Batal</button>
+        </div>
+    </div>
+
+    <!-- MAIN MENU -->
+    <div id="screen-landing" class="screen active p-8 justify-center items-center text-center">
+        <div class="mb-10">
+            <h1 class="text-3xl font-black uppercase leading-tight"><span class="text-emerald-500">Pencak Silat</span><br>Digital Scoring</h1>
+            <div class="h-1 w-20 bg-red-500 mx-auto mt-4 rounded-full"></div>
+        </div>
+        <div class="grid grid-cols-2 gap-4 w-full max-w-sm">
+            <button onclick="changeScreen('dewan')" class="bg-white p-5 rounded-[2rem] shadow-sm border-b-4 border-emerald-500 font-black text-[10px] uppercase italic"><i class="fas fa-user-tie mb-2 block text-2xl text-emerald-500"></i>Dewan</button>
+            <button onclick="changeScreen('juri-select')" class="bg-white p-5 rounded-[2rem] shadow-sm border-b-4 border-blue-500 font-black text-[10px] uppercase italic"><i class="fas fa-users mb-2 block text-2xl text-blue-500"></i>Juri</button>
+            <button onclick="changeScreen('sekretaris')" class="bg-white p-5 rounded-[2rem] shadow-sm border-b-4 border-purple-500 font-black text-[10px] uppercase italic"><i class="fas fa-file-signature mb-2 block text-2xl text-purple-500"></i>Sekretaris</button>
+            <button onclick="changeScreen('operator')" class="bg-white p-5 rounded-[2rem] shadow-sm border-b-4 border-indigo-500 font-black text-[10px] uppercase italic"><i class="fas fa-cogs mb-2 block text-2xl text-indigo-500"></i>Operator</button>
+            <button onclick="changeScreen('jadwal')" class="bg-white p-5 rounded-[2rem] shadow-sm border-b-4 border-orange-500 font-black text-[10px] uppercase italic"><i class="fas fa-calendar-alt mb-2 block text-2xl text-orange-500"></i>Jadwal</button>
+            <button onclick="changeScreen('monitor')" class="bg-white p-5 rounded-[2rem] shadow-sm border-b-4 border-yellow-500 font-black text-[10px] uppercase italic"><i class="fas fa-desktop mb-2 block text-2xl text-yellow-500"></i>Monitor</button>
+        </div>
+        <button onclick="resetSystem()" class="mt-8 text-red-500 font-black uppercase text-[9px] border border-red-500 px-4 py-2 rounded-full active:bg-red-500 active:text-white transition-all"><i class="fas fa-trash-alt mr-2"></i> Reset Seluruh Data</button>
+    </div>
+
+    <!-- DEWAN -->
+    <div id="screen-dewan" class="screen p-2">
+        <div class="bg-white p-2 rounded-xl shadow-sm mb-1 border border-slate-100">
+            <div class="flex justify-between items-center mb-1">
+                <button onclick="changeScreen('landing')" class="bg-orange-500 px-3 py-2 rounded-lg text-white shadow-md text-xs"><i class="fas fa-home"></i></button>
+                <div class="flex-1 mx-2">
+                    <button onclick="changeScreen('operator')" class="w-full bg-slate-50 border-2 border-slate-200 p-2 rounded-lg text-[10px] font-black uppercase text-slate-600 shadow-sm active:scale-95 transition-all"><i class="fas fa-list-ol mr-1"></i> Pilih Partai</button>
+                </div>
+                <div class="text-center">
+                    <h1 id="dw-timer-disp" class="text-3xl font-black text-slate-800 leading-none">02:00</h1>
+                    <p id="dw-babak-disp" class="text-[9px] font-black text-red-600 uppercase mt-0.5">BABAK 1</p>
+                </div>
+            </div>
+            <div class="flex justify-center gap-1 mb-1">
+                <button onclick="setRound(1)" id="dw-btn-b1" class="text-[8px] px-4 py-1 rounded-md border font-bold uppercase btn-raise">B 1</button>
+                <button onclick="setRound(2)" id="dw-btn-b2" class="text-[8px] px-4 py-1 rounded-md border font-bold uppercase btn-raise">B 2</button>
+                <button onclick="setRound(3)" id="dw-btn-b3" class="text-[8px] px-4 py-1 rounded-md border font-bold uppercase btn-raise">B 3</button>
+            </div>
+            <div class="grid grid-cols-5 gap-1 mb-1">
+                <button onclick="timerCtrl('start')" class="btn-raise bg-emerald-500 border-emerald-700 text-white font-black text-[8px] py-1.5 rounded-md"><i class="fas fa-play mr-1"></i> START</button>
+                <button onclick="timerCtrl('stop')" class="btn-raise bg-red-500 border-red-700 text-white font-black text-[8px] py-1.5 rounded-md"><i class="fas fa-stop mr-1"></i> STOP</button>
+                <button onclick="timerCtrl('reset')" class="btn-raise bg-slate-500 border-slate-700 text-white font-black text-[8px] py-1.5 rounded-md"><i class="fas fa-undo mr-1"></i> RESET</button>
+                <button onclick="finishMatch()" class="btn-raise bg-amber-500 border-amber-700 text-white font-black text-[8px] py-1.5 rounded-md"><i class="fas fa-flag-checkered mr-1"></i> FINISH</button>
+                <button id="btn-next-dewan" onclick="nextMatch()" class="btn-raise bg-purple-600 border-purple-800 text-white font-black text-[8px] py-1.5 rounded-md">NEXT <i class="fas fa-step-forward ml-1"></i></button>
+            </div>
+            <div class="grid grid-cols-2 gap-1">
+                <button onclick="openModal('modal-diskualifikasi')" class="btn-raise bg-slate-900 text-white font-black text-[8px] py-2 rounded-md uppercase"><i class="fas fa-user-slash mr-1"></i> Diskualifikasi</button>
+                <button onclick="openModal('modal-var-type')" class="btn-raise bg-blue-900 text-white font-black text-[8px] py-2 rounded-md uppercase italic"><i class="fas fa-tv mr-1"></i> V A R</button>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 gap-1 mb-1">
+            <div id="dw-header-tanding" class="status-header bg-emerald-50 text-slate-700">
+                <div class="text-[6px] text-emerald-600 font-black uppercase">Sedang Bertanding:</div>
+                <div id="cur-match-detail" class="text-[8px] font-bold leading-tight">---</div>
+            </div>
+            <div id="dw-header-persiapan" class="status-header bg-amber-50 text-slate-700">
+                <div class="text-[6px] text-amber-600 font-black uppercase">Persiapan:</div>
+                <div id="pers-match-detail" class="text-[8px] font-bold leading-tight">---</div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2 mb-1">
+            <div id="dw-box-b" class="sudut-biru-bg p-2 rounded-xl text-center flex flex-col justify-center min-h-[105px] border-b-4 border-blue-800 shadow-md transition-all">
+                <p id="dw-b-nama" class="text-[10px] font-black uppercase truncate">---</p>
+                <p id="dw-b-kont" class="text-[7px] font-bold opacity-80 uppercase truncate">---</p>
+                <h2 id="dw-total-b" class="text-5xl font-black leading-none my-1">0</h2>
+                <div id="dw-pen-sum-b" class="penalty-summary text-blue-100">B:0 | T:0 | P:0</div>
+            </div>
+            <div id="dw-box-m" class="sudut-merah-bg p-2 rounded-xl text-center flex flex-col justify-center min-h-[105px] border-b-4 border-red-800 shadow-md transition-all">
+                <p id="dw-m-nama" class="text-[10px] font-black uppercase truncate">---</p>
+                <p id="dw-m-kont" class="text-[7px] font-bold opacity-80 uppercase truncate">---</p>
+                <h2 id="dw-total-m" class="text-5xl font-black leading-none my-1">0</h2>
+                <div id="dw-pen-sum-m" class="penalty-summary text-red-100">B:0 | T:0 | P:0</div>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-lg shadow-sm overflow-hidden mb-2 border border-slate-200">
+            <table class="table-scoring">
+                <thead class="bg-slate-100">
+                    <tr class="text-[6px]"><th rowspan="2" style="width:25%">PESILAT</th><th colspan="3">JURI 1</th><th colspan="3">JURI 2</th><th colspan="3">JURI 3</th><th rowspan="2">TOT</th></tr>
+                    <tr class="text-[5px]"><th>B1</th><th>B2</th><th>B3</th><th>B1</th><th>B2</th><th>B3</th><th>B1</th><th>B2</th><th>B3</th></tr>
+                </thead>
+                <tbody id="dw-rt-table"></tbody>
+            </table>
+        </div>
+
+        <div id="dw-controls-area" class="grid grid-cols-2 gap-3 flex-1 overflow-y-auto custom-scroll pb-2">
+            <div class="grid grid-cols-2 gap-1.5 h-fit">
+                <button onclick="applyPenalty('biru','binaan1')" id="b-binaan1" class="btn-compact btn-raise border-blue-200"><i class="fas fa-hand-point-left text-blue-600 mb-1"></i>Binaan 1</button>
+                <button onclick="applyPenalty('biru','binaan2')" id="b-binaan2" class="btn-compact btn-raise border-blue-200"><i class="fas fa-hand-peace rotate-90 text-blue-600 mb-1"></i>Binaan 2</button>
+                <button onclick="applyPenalty('biru','teguran1')" id="b-teguran1" class="btn-compact btn-raise border-blue-200"><i class="fas fa-hand-point-up text-blue-600 mb-1"></i>Teguran 1</button>
+                <button onclick="applyPenalty('biru','teguran2')" id="b-teguran2" class="btn-compact btn-raise border-blue-200"><i class="fas fa-hand-peace text-blue-600 mb-1"></i>Teguran 2</button>
+                <button onclick="applyPenalty('biru','peringatan1')" id="b-peringatan1" class="btn-compact btn-raise border-blue-200"><i class="fas fa-exclamation-circle text-blue-600 mb-1"></i>Peringatan 1</button>
+                <button onclick="applyPenalty('biru','peringatan2')" id="b-peringatan2" class="btn-compact btn-raise border-blue-200"><i class="fas fa-exclamation-triangle text-blue-600 mb-1"></i>Peringatan 2</button>
+                <button onclick="addJatuhan('biru')" class="btn-raise sudut-biru-bg border-blue-800 text-[9px] font-black py-2 rounded-lg col-span-2">JATUHAN +3</button>
+            </div>
+            <div class="grid grid-cols-2 gap-1.5 h-fit">
+                <button onclick="applyPenalty('merah','binaan1')" id="m-binaan1" class="btn-compact btn-raise border-red-200"><i class="fas fa-hand-point-right text-red-600 mb-1"></i>Binaan 1</button>
+                <button onclick="applyPenalty('merah','binaan2')" id="m-binaan2" class="btn-compact btn-raise border-red-200"><i class="fas fa-hand-peace rotate-90 text-red-600 mb-1"></i>Binaan 2</button>
+                <button onclick="applyPenalty('merah','teguran1')" id="m-teguran1" class="btn-compact btn-raise border-red-200"><i class="fas fa-hand-point-up text-red-600 mb-1"></i>Teguran 1</button>
+                <button onclick="applyPenalty('merah','teguran2')" id="m-teguran2" class="btn-compact btn-raise border-red-200"><i class="fas fa-hand-peace text-red-600 mb-1"></i>Teguran 2</button>
+                <button onclick="applyPenalty('merah','peringatan1')" id="m-peringatan1" class="btn-compact btn-raise border-red-200"><i class="fas fa-exclamation-circle text-red-600 mb-1"></i>Peringatan 1</button>
+                <button onclick="applyPenalty('merah','peringatan2')" id="m-peringatan2" class="btn-compact btn-raise border-red-200"><i class="fas fa-exclamation-triangle text-red-600 mb-1"></i>Peringatan 2</button>
+                <button onclick="addJatuhan('merah')" class="btn-raise sudut-merah-bg border-red-800 text-[9px] font-black py-2 rounded-lg col-span-2">JATUHAN +3</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- SEKRETARIS -->
+    <div id="screen-sekretaris" class="screen">
+        <div class="p-4 bg-white shadow-sm flex justify-between items-center">
+            <button onclick="changeScreen('landing')" class="text-gray-400"><i class="fas fa-arrow-left"></i></button>
+            <h2 class="text-xs font-black uppercase">Input Sekretaris</h2>
+            <button onclick="saveSekreData()" class="text-emerald-600 font-black text-[10px]">SIMPAN</button>
+        </div>
+        <div class="flex-1 overflow-y-auto p-2 bg-slate-50 custom-scroll">
+            <div id="sekre-form-container" class="space-y-3 pb-20"></div>
+        </div>
+        <div class="bg-white p-3 border-t flex justify-between items-center">
+            <button onclick="changeSekrePage(-1)" class="bg-slate-100 px-4 py-2 rounded-lg text-[9px] font-black">PREV</button>
+            <span id="sekre-page-info" class="text-[9px] font-bold">Hal 1 / 10</span>
+            <button onclick="changeSekrePage(1)" class="bg-slate-100 px-4 py-2 rounded-lg text-[9px] font-black">NEXT</button>
+        </div>
+    </div>
+
+    <!-- OPERATOR -->
+    <div id="screen-operator" class="screen bg-slate-50">
+        <div class="p-4 bg-white shadow-sm flex justify-between items-center">
+            <div class="flex gap-2">
+                <button onclick="changeScreen('landing')" class="text-slate-400 text-sm p-1"><i class="fas fa-arrow-left"></i></button>
+                <button onclick="changeScreen('dewan')" class="bg-emerald-500 text-white px-3 py-1.5 rounded-lg font-black text-[9px] uppercase italic shadow-sm active:scale-95">Ke Dewan</button>
+            </div>
+            <h2 class="text-xs font-black uppercase italic text-indigo-600">Operator Panel</h2>
+            <button onclick="exportCSV()" class="bg-indigo-600 text-white px-3 py-1.5 rounded-lg font-black text-[9px] uppercase italic shadow-sm"><i class="fas fa-file-export mr-1"></i> Export Data</button>
+        </div>
+        <div class="flex-1 overflow-x-auto p-2">
+            <table class="w-full text-[7.5px] border-collapse bg-white shadow-sm rounded-lg overflow-hidden">
+                <thead class="bg-indigo-600 text-white">
+                    <tr><th class="border p-2">No</th><th class="border p-2">Partai</th><th class="border p-2">Nama Peserta</th><th class="border p-2">Status</th><th class="border p-2">Pemenang</th><th class="border p-2">Aksi</th></tr>
+                </thead>
+                <tbody id="operator-table-body" class="text-center font-bold"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- JADWAL -->
+    <div id="screen-jadwal" class="screen bg-slate-50">
+        <div class="p-4 bg-white shadow-sm flex justify-between items-center">
+            <button onclick="changeScreen('landing')" class="text-gray-400"><i class="fas fa-arrow-left"></i></button>
+            <h2 class="text-xs font-black uppercase italic text-orange-600">Jadwal Pertandingan</h2>
+            <button onclick="exportCSV()" class="text-orange-600 font-bold text-[8px] border border-orange-600 px-2 py-1 rounded">EXPORT</button>
+        </div>
+        <div class="flex-1 overflow-x-auto p-2">
+            <table class="w-full text-[8.5px] border-collapse bg-white shadow-sm rounded-lg overflow-hidden">
+                <thead class="bg-slate-800 text-white uppercase">
+                    <tr>
+                        <th class="border p-2" style="width: 5%;">No</th>
+                        <th class="border p-2" style="width: 15%;">Partai</th>
+                        <th class="border p-2" style="width: 25%;">Kelas / Fase</th>
+                        <th class="border p-2 bg-blue-600" style="width: 27.5%;">Sudut Biru</th>
+                        <th class="border p-2 bg-red-600" style="width: 27.5%;">Sudut Merah</th>
+                    </tr>
+                </thead>
+                <tbody id="jadwal-table-body" class="text-center font-bold"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- MONITOR -->
+    <div id="screen-monitor" class="screen p-2 bg-slate-900 overflow-y-auto custom-scroll">
+        <div class="bg-white/10 p-2 rounded-xl border border-white/20 mb-2">
+            <div class="flex justify-between items-center mb-1">
+                <button onclick="changeScreen('landing')" class="text-white/40 p-1"><i class="fas fa-chevron-left"></i></button>
+                <div class="text-center">
+                    <h1 id="mon-timer-disp" class="text-4xl font-black text-white leading-none">02:00</h1>
+                    <p id="mon-babak-disp" class="text-xs font-black text-emerald-400 uppercase">BABAK 1</p>
+                </div>
+                <div class="w-8"></div>
+            </div>
+        </div>
+
+        <div id="mon-header-tanding" class="bg-emerald-600/20 p-2 rounded-xl border border-emerald-500/30 mb-2 transition-all">
+            <p class="text-[7px] font-black text-emerald-400 uppercase mb-1">SEDANG BERTANDING:</p>
+            <div id="mon-cur-match-detail" class="text-[9px] font-bold text-white leading-tight">---</div>
+        </div>
+
+        <div id="mon-header-persiapan" class="bg-amber-600/20 p-2 rounded-xl border border-amber-500/30 mb-2 transition-all">
+            <p class="text-[7px] font-black text-amber-400 uppercase mb-1">PERSIAPAN:</p>
+            <div id="mon-pers-match-detail" class="text-[9px] font-bold text-white leading-tight">---</div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2 mb-2">
+            <div id="mon-box-b" class="sudut-biru-bg p-3 rounded-2xl text-center shadow-lg border-b-4 border-blue-800 transition-all">
+                <p id="mon-b-nama" class="text-[10px] font-black uppercase truncate">---</p>
+                <p id="mon-b-kont" class="text-[7px] font-bold opacity-80 uppercase truncate mb-1">---</p>
+                <h2 id="mon-total-b" class="text-6xl font-black leading-none">0</h2>
+                <div id="mon-pen-full-b" class="penalty-full">TIDAK ADA PELANGGARAN</div>
+            </div>
+            <div id="mon-box-m" class="sudut-merah-bg p-3 rounded-2xl text-center shadow-lg border-b-4 border-red-800 transition-all">
+                <p id="mon-m-nama" class="text-[10px] font-black uppercase truncate">---</p>
+                <p id="mon-m-kont" class="text-[7px] font-bold opacity-80 uppercase truncate mb-1">---</p>
+                <h2 id="mon-total-m" class="text-6xl font-black leading-none">0</h2>
+                <div id="mon-pen-full-m" class="penalty-full">TIDAK ADA PELANGGARAN</div>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-xl overflow-hidden shadow-xl mb-10">
+            <table class="table-scoring">
+                <thead class="bg-slate-200">
+                    <tr class="text-[6px]"><th rowspan="2" style="width:25%">PESILAT</th><th colspan="3">JURI 1</th><th colspan="3">JURI 2</th><th colspan="3">JURI 3</th><th rowspan="2">TOT</th></tr>
+                    <tr class="text-[5px]"><th>B1</th><th>B2</th><th>B3</th><th>B1</th><th>B2</th><th>B3</th><th>B1</th><th>B2</th><th>B3</th></tr>
+                </thead>
+                <tbody id="mon-rt-table" class="font-bold"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- JURI PANEL -->
+    <div id="screen-juri-select" class="screen p-8 justify-center items-center">
+        <div class="mb-8 text-center"><h2 class="text-2xl font-black uppercase text-blue-600 italic">Pilih Juri</h2></div>
+        <div class="grid grid-cols-1 gap-4 w-full max-w-xs">
+            <button onclick="initJuri(1)" class="p-6 bg-white border-2 border-blue-500 rounded-3xl font-black text-blue-600 shadow-lg">Juri 1</button>
+            <button onclick="initJuri(2)" class="p-6 bg-white border-2 border-blue-500 rounded-3xl font-black text-blue-600 shadow-lg">Juri 2</button>
+            <button onclick="initJuri(3)" class="p-6 bg-white border-2 border-blue-500 rounded-3xl font-black text-blue-600 shadow-lg">Juri 3</button>
+        </div>
+        <button onclick="changeScreen('landing')" class="mt-8 text-slate-400 font-bold uppercase text-[10px] tracking-widest"><i class="fas fa-arrow-left"></i> Kembali</button>
+    </div>
+
+    <div id="screen-juri" class="screen bg-slate-100">
+        <!-- VAR OVERLAY FOR JURI -->
+        <div id="jr-var-overlay" class="modal-overlay">
+            <div class="bg-white rounded-[3rem] p-10 w-full max-w-md shadow-2xl border-4 border-blue-500 text-center">
+                <p id="jr-var-notif" class="text-[11px] font-black text-slate-500 uppercase leading-relaxed mb-8">Juri silahkan memberi pilihan untuk verifikasi VAR</p>
+                <div class="grid grid-cols-3 gap-6 w-full">
+                    <button id="jr-vote-biru" onclick="sendVarVote('biru')" class="circle-vote circle-blue mx-auto active:scale-90 shadow-lg"></button>
+                    <button id="jr-vote-merah" onclick="sendVarVote('merah')" class="circle-vote circle-red mx-auto active:scale-90 shadow-lg"></button>
+                    <button id="jr-vote-kuning" onclick="sendVarVote('kuning')" class="circle-vote circle-yellow mx-auto active:scale-90 shadow-lg"></button>
+                </div>
+                <p class="text-[8px] font-bold text-slate-400 mt-6 uppercase tracking-widest">Sentuh warna pilihan Anda</p>
+            </div>
+        </div>
+
+        <div class="bg-slate-900 text-white p-3 flex justify-between items-center shadow-md">
+            <button onclick="changeScreen('landing')" class="text-[9px] font-bold text-gray-500 bg-white/10 px-3 py-2 rounded-lg uppercase">MENU</button>
+            <div class="text-center">
+                <span id="jr-role-name" class="text-[10px] font-black text-blue-400 block uppercase">---</span>
+                <span class="text-[8px] font-bold text-gray-500 uppercase italic">Partai: <span id="jr-match-no">--</span></span>
+            </div>
+            <span id="jr-timer-disp" class="text-3xl font-black text-yellow-400">02:00</span>
+        </div>
+        <div class="flex-1 flex flex-row p-2 gap-2 overflow-hidden">
+            <div class="flex-1 sudut-biru-bg rounded-[2rem] p-4 flex flex-col border-b-8 border-blue-800 shadow-lg">
+                <div class="flex justify-between items-center mb-3">
+                    <p id="jr-b-nama-full" class="text-[12px] font-black uppercase truncate leading-none">---</p>
+                    <button onclick="undoLastHit('biru')" class="w-10 h-10 bg-yellow-400 text-black rounded-xl flex items-center justify-center shadow-md active:scale-90"><i class="fas fa-delete-left text-sm"></i></button>
+                </div>
+                <div class="flex-1 flex flex-col gap-3">
+                    <button onclick="sendHitDirect('biru', 1)" class="jr-hit-btn flex-1 bg-white/20 border-2 border-white/30 rounded-3xl font-black text-[12px] uppercase flex flex-col items-center justify-center shadow-lg"><i class="fas fa-hand-fist text-4xl mb-2"></i>PUKULAN +1</button>
+                    <button onclick="sendHitDirect('biru', 2)" class="jr-hit-btn flex-1 bg-white/20 border-2 border-white/30 rounded-3xl font-black text-[12px] uppercase flex flex-col items-center justify-center shadow-lg"><i class="fas fa-shoe-prints -rotate-90 text-4xl mb-2"></i>TENDANGAN +2</button>
+                </div>
+            </div>
+            <div class="flex-1 sudut-merah-bg rounded-[2rem] p-4 flex flex-col border-b-8 border-red-800 shadow-lg">
+                <div class="flex justify-between items-center mb-3">
+                    <p id="jr-m-nama-full" class="text-[12px] font-black uppercase truncate leading-none">---</p>
+                    <button onclick="undoLastHit('merah')" class="w-10 h-10 bg-yellow-400 text-black rounded-xl flex items-center justify-center shadow-md active:scale-90"><i class="fas fa-delete-left text-sm"></i></button>
+                </div>
+                <div class="flex-1 flex flex-col gap-3">
+                    <button onclick="sendHitDirect('merah', 1)" class="jr-hit-btn flex-1 bg-white/20 border-2 border-white/30 rounded-3xl font-black text-[12px] uppercase flex flex-col items-center justify-center shadow-lg"><i class="fas fa-hand-fist text-4xl mb-2"></i>PUKULAN +1</button>
+                    <button onclick="sendHitDirect('merah', 2)" class="jr-hit-btn flex-1 bg-white/20 border-2 border-white/30 rounded-3xl font-black text-[12px] uppercase flex flex-col items-center justify-center shadow-lg"><i class="fas fa-shoe-prints -rotate-90 text-4xl mb-2"></i>TENDANGAN +2</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <audio id="snd-hit" src="https://assets.mixkit.co/active_storage/sfx/2571/2571-preview.mp3"></audio>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getDatabase, ref, set, onValue, update } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+
+    const firebaseConfig = {
+  apiKey: "AIzaSyCGZueCL3oUPkU6IV0qa4Xig53ew49UsF0",
+  authDomain: "score-digital-silat.firebaseapp.com",
+  projectId: "score-digital-silat",
+  storageBucket: "score-digital-silat.firebasestorage.app",
+  messagingSenderId: "787564781085",
+  appId: "1:787564781085:web:95d5bb93838f01ae77b0f4"
+};
+
+    const app = initializeApp(firebaseConfig);
+    const database = getDatabase(app);
+    const dbRef = ref(database, 'pencak_scoring_state');
+
+    const INITIAL_STATE = {
+        timer: 120, babak: 1, isRunning: false, idx: 0, bertandingIdx: -1, persiapanIdx: -1,
+        matches: Array.from({length: 100}, (_, i) => ({ 
+            p: i+1, m: "", b: "", km: "", kb: "", cat: "USIA DINI", kelas: "A", gender: "PUTRA", fase: "PENYISIHAN", status: 'idle', totalM: 0, totalB: 0, winner: "",
+            maxBabak: 3, maxTimer: 120
+        })),
+        merah: { juri: {j1:[0,0,0], j2:[0,0,0], j3:[0,0,0]}, penHistory: [], jat: 0, history: {j1:[], j2:[], j3:[]}, dis: false },
+        biru: { juri: {j1:[0,0,0], j2:[0,0,0], j3:[0,0,0]}, penHistory: [], jat: 0, history: {j1:[], j2:[], j3:[]}, dis: false },
+        buffer: {
+            merah: { v1: {j1:0, j2:0, j3:0}, v2: {j1:0, j2:0, j3:0} },
+            biru: { v1: {j1:0, j2:0, j3:0}, v2: {j1:0, j2:0, j3:0} }
+        },
+        juriNames: { j1: "JURI 1", j2: "JURI 2", j3: "JURI 3" },
+        var: { active: false, type: '', votes: { j1: '', j2: '', j3: '' } },
+        lastHit: { juri: 0, sudut: '', time: 0 }
+    };
+
+    window.state = INITIAL_STATE;
+    window.localJuri = localStorage.getItem('pencak_role_juri') || 0;
+    let tInt = null;
+    window.sekrePage = 0;
+
+    onValue(dbRef, (snapshot) => {
+        const data = snapshot.val();
+        if (data) {
+            window.state = data;
+            updateUI();
+        } else {
+            set(dbRef, INITIAL_STATE);
+        }
+    });
+
+    window.broadcast = function(path = "", value = null) {
+        if (path !== "") {
+            const specificRef = ref(database, 'pencak_scoring_state/' + path);
+            set(specificRef, value);
+        } else {
+            set(dbRef, window.state);
+        }
+    }
+
+    window.changeScreen = function(id) { 
+        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active')); 
+        document.getElementById('screen-'+id).classList.add('active'); 
+        if(id === 'sekretaris') renderSekreForm();
+        if(id === 'operator') renderOperatorTable();
+        if(id === 'jadwal') renderJadwalTable();
+    }
+
+    window.updateUI = function() {
+        const isMonitor = document.getElementById('screen-monitor').classList.contains('active');
+        const m = window.state.matches[window.state.idx];
+        const mb = window.state.bertandingIdx >= 0 ? window.state.matches[window.state.bertandingIdx] : m;
+        const tStr = (s) => `${Math.floor(s/60).toString().padStart(2,'0')}:${((s||0)%60).toString().padStart(2,'0')}`;
+        
+        const timerEls = ['dw-timer-disp', 'mon-timer-disp', 'jr-timer-disp'];
+        timerEls.forEach(id => {
+            const el = document.getElementById(id);
+            if(el) el.innerText = tStr(window.state.timer);
+        });
+
+        const babakEls = ['dw-babak-disp', 'mon-babak-disp'];
+        babakEls.forEach(id => {
+            const el = document.getElementById(id);
+            if(el) el.innerText = "BABAK " + window.state.babak;
+        });
+
+        [1,2,3].forEach(b => {
+            const btn = document.getElementById(`dw-btn-b${b}`);
+            if(btn) btn.classList.toggle('active-babak', window.state.babak === b);
+        });
+
+        const detailStr = (p) => {
+            if(!p.m && !p.b) return "BELUM ADA DATA PERTANDINGAN";
+            return `PARTAI ${p.p} / ${p.fase} ${p.cat} ${p.kelas} ${p.gender} / <span class="text-red-600">${p.m} (${p.km})</span> VS <span class="text-blue-600">${p.b} (${p.kb})</span>`;
+        };
+
+        if(document.getElementById('cur-match-detail')) document.getElementById('cur-match-detail').innerHTML = detailStr(mb);
+        if(document.getElementById('mon-cur-match-detail')) document.getElementById('mon-cur-match-detail').innerHTML = detailStr(mb);
+        
+        const pMatch = window.state.persiapanIdx >= 0 ? window.state.matches[window.state.persiapanIdx] : {m:"", b:"", p:"--"};
+        const pInfo = pMatch.m || pMatch.b ? detailStr(pMatch) : "BELUM ADA DATA PERTANDINGAN";
+        if(document.getElementById('pers-match-detail')) document.getElementById('pers-match-detail').innerHTML = pInfo;
+        if(document.getElementById('mon-pers-match-detail')) document.getElementById('mon-pers-match-detail').innerHTML = pInfo;
+
+        const statusConfigs = [
+            { id: 'dw-header-tanding', active: window.state.bertandingIdx !== -1, class: 'status-header-active-tanding' },
+            { id: 'dw-header-persiapan', active: window.state.persiapanIdx !== -1, class: 'status-header-active-persiapan' },
+            { id: 'mon-header-tanding', active: window.state.bertandingIdx !== -1, class: 'status-header-active-tanding' },
+            { id: 'mon-header-persiapan', active: window.state.persiapanIdx !== -1, class: 'status-header-active-persiapan' }
+        ];
+        statusConfigs.forEach(conf => {
+            const el = document.getElementById(conf.id);
+            if(el) el.classList.toggle(conf.class, conf.active);
+        });
+
+        let tm = calculateTotal('merah'), tb = calculateTotal('biru');
+        
+        const applyGlow = (pre) => {
+            const bBox = document.getElementById(`${pre}-box-b`);
+            const mBox = document.getElementById(`${pre}-box-m`);
+            if(bBox && mBox) {
+                bBox.classList.remove('leader-glow');
+                mBox.classList.remove('leader-glow');
+                if(tb > tm && tb > 0) bBox.classList.add('leader-glow');
+                else if(tm > tb && tm > 0) mBox.classList.add('leader-glow');
+            }
+        };
+        
+        const syncParticipants = (pre) => {
+            if(document.getElementById(`${pre}-b-nama`)) document.getElementById(`${pre}-b-nama`).innerText = mb.b || 'BIRU';
+            if(document.getElementById(`${pre}-b-kont`)) document.getElementById(`${pre}-b-kont`).innerText = mb.kb || '---';
+            if(document.getElementById(`${pre}-total-b`)) document.getElementById(`${pre}-total-b`).innerText = tb === -999 ? "DIS" : tb;
+            
+            if(document.getElementById(`${pre}-m-nama`)) document.getElementById(`${pre}-m-nama`).innerText = mb.m || 'MERAH';
+            if(document.getElementById(`${pre}-m-kont`)) document.getElementById(`${pre}-m-kont`).innerText = mb.km || '---';
+            if(document.getElementById(`${pre}-total-m`)) document.getElementById(`${pre}-total-m`).innerText = tm === -999 ? "DIS" : tm;
+            applyGlow(pre);
+        };
+        syncParticipants('dw'); syncParticipants('mon');
+
+        const rP = (s) => { const h = window.state[s].penHistory || []; return `B:${h.filter(x=>x.type.startsWith('binaan')).length}|T:${h.filter(x=>x.type.startsWith('teguran')).length}|P:${h.filter(x=>x.type.startsWith('peringatan')).length}`; };
+        
+        const rPFull = (s) => {
+            const h = window.state[s].penHistory || [];
+            if (h.length === 0) return "TIDAK ADA PELANGGARAN";
+            const map = { binaan1:"Binaan 1", binaan2:"Binaan 2", teguran1:"Teguran 1", teguran2:"Teguran 2", peringatan1:"Peringatan 1", peringatan2:"Peringatan 2" };
+            return h.map(x => map[x.type]).join(", ");
+        };
+
+        if(document.getElementById('dw-pen-sum-m')) document.getElementById('dw-pen-sum-m').innerText = rP('merah');
+        if(document.getElementById('dw-pen-sum-b')) document.getElementById('dw-pen-sum-b').innerText = rP('biru');
+        if(document.getElementById('mon-pen-full-m')) document.getElementById('mon-pen-full-m').innerText = rPFull('merah');
+        if(document.getElementById('mon-pen-full-b')) document.getElementById('mon-pen-full-b').innerText = rPFull('biru');
+
+        const buildTable = () => {
+            let html = "";
+            ['biru','merah'].forEach(side => {
+                const sc = window.state[side];
+                const name = side==='biru' ? (mb.b||'BIRU') : (mb.m||'MERAH');
+                const kont = side==='biru' ? (mb.kb||'-') : (mb.km||'-');
+                const total = calculateTotal(side);
+                html += `<tr><td class="text-left font-bold ${side==='biru'?'text-blue-600':'text-red-600'} px-1 leading-tight">${name}<br><span class="text-[5px] text-slate-400 font-bold">${kont}</span></td>`;
+                [1,2,3].forEach(j => {
+                    [0,1,2].forEach(b => {
+                        const val = sc.juri['j'+j][b];
+                        const isNew = window.state.lastHit.juri === j && window.state.lastHit.sudut === side && (Date.now() - window.state.lastHit.time < 1000);
+                        html += `<td class="${isNew ? 'cell-active' : ''}">${val}</td>`;
+                    });
+                });
+                html += `<td class="${side==='biru'?'bg-blue-50':'bg-red-50'} font-black text-[10px]">${total===-999?'DIS':total}</td></tr>`;
+            });
+            return html;
+        };
+        if(document.getElementById('dw-rt-table')) document.getElementById('dw-rt-table').innerHTML = buildTable();
+        if(document.getElementById('mon-rt-table')) document.getElementById('mon-rt-table').innerHTML = buildTable();
+
+        if(window.localJuri) {
+            document.getElementById('jr-role-name').innerText = window.state.juriNames['j'+window.localJuri];
+            document.getElementById('jr-match-no').innerText = mb.p;
+            document.getElementById('jr-b-nama-full').innerText = mb.b || "BIRU";
+            document.getElementById('jr-m-nama-full').innerText = mb.m || "MERAH";
+
+            const overlay = document.getElementById('jr-var-overlay');
+            if (window.state.var.active) {
+                overlay.classList.add('active');
+                document.getElementById('jr-var-notif').innerText = `Juri ${window.localJuri} silakan beri pilihan untuk verifikasi ${window.state.var.type}`;
+                const myVote = window.state.var.votes['j' + window.localJuri];
+                ['biru', 'merah', 'kuning'].forEach(v => {
+                    const btn = document.getElementById(`jr-vote-${v}`);
+                    if(btn) btn.classList.toggle('circle-active', myVote === v);
+                });
+            } else { overlay.classList.remove('active'); }
+        }
+
+        const dwVarResultModal = document.getElementById('modal-dw-var-result');
+        if(window.state.var.active && dwVarResultModal && !isMonitor) {
+            dwVarResultModal.classList.add('active');
+            ['j1', 'j2', 'j3'].forEach((j, i) => {
+                const v = window.state.var.votes[j];
+                const el = document.getElementById(`dw-vote-${i+1}`);
+                if(el) {
+                    el.className = "circle-vote " + (v === 'biru' ? 'circle-blue' : v === 'merah' ? 'circle-red' : v === 'kuning' ? 'circle-yellow' : 'circle-none');
+                    if(v) el.classList.add('circle-active');
+                    el.innerText = v ? '' : i+1;
+                    if(v) el.innerHTML = '<i class="fas fa-check"></i>';
+                }
+            });
+        } else if(dwVarResultModal) {
+            dwVarResultModal.classList.remove('active');
+        }
+
+        syncPenaltyVisuals('merah'); syncPenaltyVisuals('biru');
+        if(document.getElementById('screen-operator').classList.contains('active')) renderOperatorTable();
+    }
+
+    window.calculateTotal = function(s) {
+        const sc = window.state[s]; if(sc.dis) return -999;
+        const totJuri = (sc.juri.j1.reduce((a,b)=>a+b,0)) + (sc.juri.j2.reduce((a,b)=>a+b,0)) + (sc.juri.j3.reduce((a,b)=>a+b,0));
+        const pMap = { teguran1:1, teguran2:2, peringatan1:5, peringatan2:10 };
+        let tp = 0; (sc.penHistory || []).forEach(i => tp += (pMap[i.type]||0));
+        return totJuri + sc.jat - tp;
+    }
+
+    window.initJuri = function(n) {
+        window.localJuri = n;
+        localStorage.setItem('pencak_role_juri', n);
+        changeScreen('juri');
+    }
+
+    window.sendHitDirect = function(s, v) {
+        if(!window.state.isRunning) return;
+        const now = Date.now();
+        const jKey = 'j' + window.localJuri;
+        const bIdx = window.state.babak - 1;
+        const vKey = 'v' + v;
+
+        window.broadcast(`buffer/${s}/${vKey}/${jKey}`, now);
+
+        const hits = window.state.buffer[s][vKey];
+        const otherJuries = Object.keys(hits).filter(k => k !== jKey);
+        let confirmed = false;
+
+        otherJuries.forEach(otherKey => {
+            if (hits[otherKey] > 0 && (now - hits[otherKey]) <= 2000) {
+                confirmed = true;
+                const currentScoreOther = window.state[s].juri[otherKey][bIdx];
+                window.broadcast(`${s}/juri/${otherKey}/${bIdx}`, currentScoreOther + v);
+                window.broadcast(`buffer/${s}/${vKey}/${otherKey}`, 0);
+            }
+        });
+
+        if (confirmed) {
+            const currentScoreSelf = window.state[s].juri[jKey][bIdx];
+            window.broadcast(`${s}/juri/${jKey}/${bIdx}`, currentScoreSelf + v);
+            
+            const snd = document.getElementById('snd-hit');
+            if(snd) { snd.currentTime = 0; snd.play(); }
+            window.broadcast(`lastHit`, { juri: parseInt(window.localJuri), sudut: s, time: now });
+            window.broadcast(`buffer/${s}/${vKey}/${jKey}`, 0);
+        }
+
+        const newHistory = [...(window.state[s].history[jKey] || []), v];
+        window.broadcast(`${s}/history/${jKey}`, newHistory);
+    }
+
+    window.undoLastHit = function(s) {
+        if(!window.state.isRunning) return;
+        const jKey = 'j' + window.localJuri;
+        const bIdx = window.state.babak - 1;
+        let h = window.state[s].history[jKey] || [];
+        if(h.length > 0) {
+            let lastVal = h.pop();
+            let newScore = Math.max(0, window.state[s].juri[jKey][bIdx] - lastVal);
+            window.broadcast(`${s}/juri/${jKey}/${bIdx}`, newScore);
+            window.broadcast(`${s}/history/${jKey}`, h);
+        }
+    }
+
+    window.timerCtrl = function(cmd) {
+        if(cmd === 'start') {
+            window.broadcast('isRunning', true);
+            startTimerLogic();
+        } else if(cmd === 'stop') {
+            window.broadcast('isRunning', false);
+            if(tInt) clearInterval(tInt);
+        } else if(cmd === 'reset') {
+            window.broadcast('isRunning', false);
+            const m = window.state.matches[window.state.idx];
+            window.broadcast('timer', m.maxTimer || 120);
+        }
+    }
+
+    function startTimerLogic() {
+        if(tInt) clearInterval(tInt);
+        tInt = setInterval(() => {
+            if(window.state.isRunning && window.state.timer > 0 && document.getElementById('screen-dewan').classList.contains('active')) {
+                window.broadcast('timer', window.state.timer - 1);
+            } else if(window.state.timer <= 0) {
+                clearInterval(tInt);
+                window.broadcast('isRunning', false);
+            }
+        }, 1000);
+    }
+
+    window.setRound = function(n) { 
+        if(!window.state.isRunning) window.broadcast('babak', n); 
+    }
+
+    window.addJatuhan = function(s) { 
+        window.broadcast(`${s}/jat`, window.state[s].jat + 3); 
+    }
+
+    window.sendVarVote = function(c) {
+        if(window.localJuri) {
+            window.broadcast(`var/votes/j${window.localJuri}`, c);
+        }
+    }
+
+    window.startVAR = function(t) { 
+        const varUpdate = { active: true, type: t, votes: { j1: '', j2: '', j3: '' } }; 
+        window.broadcast('var', varUpdate);
+        closeModal('modal-var-type'); 
+    }
+
+    window.closeVAR = function() { 
+        window.broadcast('var/active', false); 
+    }
+
+    window.applyPenalty = function(s, p) { 
+        const currentPen = [...(window.state[s].penHistory || [])];
+        const idx = currentPen.findIndex(x => x.type === p && x.round === window.state.babak); 
+        (idx > -1) ? currentPen.splice(idx, 1) : currentPen.push({ type: p, round: window.state.babak }); 
+        window.broadcast(`${s}/penHistory`, currentPen);
+    }
+
+    function syncPenaltyVisuals(s) { 
+        const pr = s === 'merah' ? 'm-' : 'b-'; 
+        const history = window.state[s].penHistory || [];
+        ['binaan1', 'binaan2', 'teguran1', 'teguran2', 'peringatan1', 'peringatan2'].forEach(t => { 
+            const b = document.getElementById(pr + t); 
+            if(b) b.classList.toggle('btn-pressed', history.some(p => p.type === t && p.round === window.state.babak)); 
+        }); 
+    }
+
+    window.renderSekreForm = function() {
+        const cont = document.getElementById('sekre-form-container');
+        const start = window.sekrePage * 10;
+        cont.innerHTML = window.state.matches.slice(start, start + 10).map((m, idx) => {
+            const i = start + idx;
+            return `<div class="p-3 bg-white rounded-xl border border-slate-200 shadow-sm">
+                <div class="grid grid-cols-6 gap-1 mb-2">
+                    <div class="text-center font-black text-[10px]">P.${m.p}</div>
+                    <select id="in-f-${i}" class="input-sekre border border-slate-200"><option ${m.fase==='PENYISIHAN'?'selected':''}>PENYISIHAN</option><option ${m.fase==='PEREMPAT FINAL'?'selected':''}>PEREMPAT FINAL</option><option ${m.fase==='SEMI FINAL'?'selected':''}>SEMI FINAL</option><option ${m.fase==='FINAL'?'selected':''}>FINAL</option></select>
+                    <select id="in-c-${i}" class="input-sekre border border-slate-200"><option ${m.cat==='USIA DINI'?'selected':''}>USIA DINI</option><option ${m.cat==='PRA REMAJA'?'selected':''}>PRA REMAJA</option><option ${m.cat==='REMAJA'?'selected':''}>REMAJA</option><option ${m.cat==='DEWASA'?'selected':''}>DEWASA</option></select>
+                    <select id="in-k-${i}" class="input-sekre border border-slate-200">${['A','B','C','D','E','F','G','H','I','J','BEBAS'].map(k => `<option ${m.kelas===k?'selected':''}>${k}</option>`).join('')}</select>
+                    <select id="in-g-${i}" class="input-sekre border border-slate-200"><option ${m.gender==='PUTRA'?'selected':''}>PUTRA</option><option ${m.gender==='PUTRI'?'selected':''}>PUTRI</option></select>
+                    <select id="in-b-${i}" class="input-sekre border border-slate-200"><option value="1" ${m.maxBabak==1?'selected':''}>1 B</option><option value="2" ${m.maxBabak==2?'selected':''}>2 B</option><option value="3" ${m.maxBabak==3?'selected':''}>3 B</option></select>
+                </div>
+                <div class="grid grid-cols-2 gap-2 mb-2">
+                    <div class="space-y-1 bg-red-100 p-1.5 rounded"><input id="in-mn-${i}" value="${m.m}" placeholder="NAMA MERAH" class="input-sekre bg-red-500 text-white placeholder-red-200"><input id="in-mk-${i}" value="${m.km}" placeholder="KONTINGEN MERAH" class="input-sekre bg-red-600 text-white placeholder-red-200"></div>
+                    <div class="space-y-1 bg-blue-100 p-1.5 rounded"><input id="in-bn-${i}" value="${m.b}" placeholder="NAMA BIRU" class="input-sekre bg-blue-500 text-white placeholder-blue-200"><input id="in-bk-${i}" value="${m.kb}" placeholder="KONTINGEN BIRU" class="input-sekre bg-blue-600 text-white placeholder-blue-200"></div>
+                </div>
+                <div class="flex gap-2 items-center"><label class="text-[7px] font-bold">TIMER:</label><select id="in-t-${i}" class="input-sekre w-24 border border-slate-200"><option value="60" ${m.maxTimer==60?'selected':''}>1 MENIT</option><option value="90" ${m.maxTimer==90?'selected':''}>1.5 MENIT</option><option value="120" ${m.maxTimer==120?'selected':''}>2 MENIT</option><option value="180" ${m.maxTimer==180?'selected':''}>3 MENIT</option></select></div>
+            </div>`;
+        }).join('');
+        document.getElementById('sekre-page-info').innerText = `Hal ${window.sekrePage + 1} / 10`;
+    }
+
+    window.saveSekreData = function() {
+        const start = window.sekrePage * 10;
+        const updatedMatches = [...window.state.matches];
+        for(let i=start; i<start+10; i++) {
+            const m = updatedMatches[i];
+            m.fase = document.getElementById(`in-f-${i}`).value;
+            m.cat = document.getElementById(`in-c-${i}`).value;
+            m.kelas = document.getElementById(`in-k-${i}`).value;
+            m.gender = document.getElementById(`in-g-${i}`).value;
+            m.maxBabak = parseInt(document.getElementById(`in-b-${i}`).value);
+            m.maxTimer = parseInt(document.getElementById(`in-t-${i}`).value);
+            m.m = document.getElementById(`in-mn-${i}`).value;
+            m.km = document.getElementById(`in-mk-${i}`).value;
+            m.b = document.getElementById(`in-bn-${i}`).value;
+            m.kb = document.getElementById(`in-bk-${i}`).value;
+        }
+        window.broadcast('matches', updatedMatches);
+        showNotif();
+    }
+
+    window.renderOperatorTable = function() {
+        const body = document.getElementById('operator-table-body');
+        body.innerHTML = window.state.matches.filter(m => m.m || m.b).map((m, i) => {
+            const isBertanding = window.state.bertandingIdx === m.p-1;
+            const isPersiapan = window.state.persiapanIdx === m.p-1;
+            const isSelesai = m.status === 'selesai';
+            return `<tr class="border-b"><td class="p-2">${i+1}</td><td class="p-2">PARTAI ${m.p}</td><td class="p-2 leading-tight"><span class="text-red-600">${m.m}</span> vs <span class="text-blue-600">${m.b}</span></td><td class="p-2 flex gap-1 justify-center"><button onclick="setMatchStatus(${m.p-1}, 'bertanding')" class="op-btn ${isBertanding ? 'btn-bertanding' : 'btn-inactive'}">Tanding</button><button onclick="setMatchStatus(${m.p-1}, 'persiapan')" class="op-btn ${isPersiapan ? 'btn-persiapan' : 'btn-inactive'}">Siap</button><button onclick="setMatchStatus(${m.p-1}, 'selesai')" class="op-btn ${isSelesai ? 'btn-selesai' : 'btn-inactive'}">Finish</button></td><td class="p-2">${m.winner || '-'}</td><td class="p-2"><button onclick="deleteMatch(${m.p-1})" class="text-red-400"><i class="fas fa-trash"></i></button></td></tr>`;
+        }).join('');
+    }
+
+    window.setMatchStatus = function(idx, status) {
+        if(status === 'bertanding') {
+            if(window.state.bertandingIdx === idx) window.broadcast('bertandingIdx', -1);
+            else { window.broadcast('bertandingIdx', idx); window.broadcast('idx', idx); resetActiveMatchData(); window.broadcast('timer', window.state.matches[idx].maxTimer); }
+        } else if(status === 'persiapan') { window.broadcast('persiapanIdx', (window.state.persiapanIdx === idx) ? -1 : idx);
+        } else if(status === 'selesai') {
+            const m = {...window.state.matches[idx]}; m.status = 'selesai';
+            m.totalM = calculateTotal('merah'); m.totalB = calculateTotal('biru');
+            if (m.totalM > m.totalB) m.winner = m.m; else if (m.totalB > m.totalM) m.winner = m.b; else m.winner = "SERI";
+            window.broadcast(`matches/${idx}`, m);
+            if(window.state.bertandingIdx === idx) window.broadcast('bertandingIdx', -1);
+        }
+    }
+
+    window.renderJadwalTable = function() {
+        const body = document.getElementById('jadwal-table-body');
+        body.innerHTML = window.state.matches.filter(m => m.m || m.b).map((m, i) => `<tr class="border-b"><td class="p-3 border">${i+1}</td><td class="p-3 border">Partai ${m.p}</td><td class="p-3 border text-[7.5px] uppercase leading-tight">${m.fase}<br>${m.cat} ${m.kelas} ${m.gender}</td><td class="p-3 border bg-blue-500 text-white leading-tight"><span>${m.b || '-'}</span><br><span class="text-[7px] opacity-80">(${m.kb || '-'})</span></td><td class="p-3 border bg-red-500 text-white leading-tight"><span>${m.m || '-'}</span><br><span class="text-[7px] opacity-80">(${m.km || '-'})</span></td></tr>`).join('');
+    }
+
+    function resetActiveMatchData() {
+        window.broadcast('babak', 1);
+        window.broadcast('isRunning', false);
+        window.broadcast('merah', { juri:{j1:[0,0,0], j2:[0,0,0], j3:[0,0,0]}, penHistory:[], jat:0, history:{j1:[], j2:[], j3:[]}, dis:false });
+        window.broadcast('biru', { juri:{j1:[0,0,0], j2:[0,0,0], j3:[0,0,0]}, penHistory:[], jat:0, history:{j1:[], j2:[], j3:[]}, dis:false });
+        window.broadcast('buffer', INITIAL_STATE.buffer);
+        window.broadcast('var', { active: false, type: '', votes: { j1: '', j2: '', j3: '' } });
+    }
+
+    window.finishMatch = function() { if(confirm("Selesaikan partai ini?")) setMatchStatus(window.state.idx, 'selesai'); }
+    window.nextMatch = function() { if(window.state.idx < 99) { const next = window.state.idx + 1; setMatchStatus(next, 'bertanding'); } }
+    window.executeDis = function(s) { window.broadcast(`${s}/dis`, true); closeModal('modal-diskualifikasi'); }
+    window.openModal = function(id) { document.getElementById(id).classList.add('active'); }
+    window.closeModal = function(id) { document.getElementById(id).classList.remove('active'); }
+    window.showNotif = function() { const n = document.getElementById('save-ani'); n.classList.add('show'); setTimeout(()=>n.classList.remove('show'), 2000); }
+    window.deleteMatch = function(idx) { if(confirm("Hapus data partai?")) { window.broadcast(`matches/${idx}`, INITIAL_STATE.matches[idx]); } }
+    window.changeSekrePage = function(v) { let n = window.sekrePage + v; if(n >= 0 && n < 10) { window.sekrePage = n; renderSekreForm(); } }
+    
+    window.resetSystem = function() {
+        if(confirm("Hapus seluruh data di Firebase?")) {
+            window.broadcast("", INITIAL_STATE);
+            setTimeout(() => location.reload(), 1000);
+        }
+    }
+
+    window.exportCSV = function() {
+        let csv = "No,Partai,Kelas,Sudut Biru,Sudut Merah,Skor B,Skor M,Pemenang\n";
+        window.state.matches.filter(m => m.m || m.b).forEach(m => { csv += `${m.p},${m.fase},${m.cat} ${m.kelas},${m.b},${m.m},${m.totalB},${m.totalM},${m.winner}\n`; });
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a'); a.href = url; a.download = 'hasil_pertandingan.csv'; a.click();
+    }
+</script>
+</body>
+</html>
